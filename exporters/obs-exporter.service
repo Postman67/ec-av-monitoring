@@ -1,0 +1,40 @@
+[Unit]
+Description=OBS Studio Prometheus Exporter
+Documentation=https://github.com/obsproject/obs-websocket
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/clio/.openclaw/workspace/ec-network/exporters/venv/bin/python3 /home/clio/.openclaw/workspace/ec-network/exporters/obs_exporter.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-exporter
+
+# Environment (override as needed)
+Environment=OBS_HOST=10.50.0.4
+Environment=OBS_PORT=4455
+Environment=EXPORTER_PORT=9121
+Environment=POLL_INTERVAL=10
+Environment=RECONNECT_DELAY=5
+# OBS_PASSWORD read from /home/clio/.openclaw/secrets/obs_pc_ws_pass by default
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/clio/.openclaw/secrets
+ReadWritePaths=/home/clio/.openclaw/workspace/ec-network/exporters
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

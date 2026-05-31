@@ -1,0 +1,32 @@
+[Unit]
+Description=Prometheus exporter for Shure QLXD wireless receivers
+Documentation=file:///home/clio/.openclaw/workspace/ec-network/exporters/shure_exporter.py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clio
+Group=clio
+WorkingDirectory=/home/clio/.openclaw/workspace/ec-network/exporters
+ExecStart=/usr/bin/python3 /home/clio/.openclaw/workspace/ec-network/exporters/shure_exporter.py
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Environment
+Environment=LOG_LEVEL=INFO
+Environment=SHURE_METRICS_PORT=9122
+Environment=SHURE_TCP_PORT=2202
+Environment=SHURE_METER_RATE=00250
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/clio/.openclaw/workspace/ec-network/exporters
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
