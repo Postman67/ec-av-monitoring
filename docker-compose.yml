@@ -1,75 +1,65 @@
 version: "3.8"
 
-# EC A/V Monitoring Stack
-# Deploy on The Forest Docker Swarm (10.70.0.x network)
-# Prometheus + Grafana + 3 exporters (OBS, Shure, Companion)
+# EC A/V Monitoring Stack — The Forest Docker Swarm
 
 services:
-  # --- Prometheus ---
   prometheus:
     image: prom/prometheus:v2.54.0
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=90d"
     networks:
       - monitoring
-    deploy:
-      placement:
-        constraints:
-          - node.hostname == docker
 
-  # --- Grafana ---
   grafana:
     image: grafana/grafana:11.2.0
     ports:
-      - "4000:3000"   # Map to 4000 to avoid conflict with existing Grafana
+      - "4000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-ec-av-2026}"
+      GF_SECURITY_ADMIN_PASSWORD: "ecav2026"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/ec-av-overview.json
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    configs:
+      - source: grafana_datasource
+        target: /etc/grafana/provisioning/datasources/prometheus.yml
+      - source: grafana_dashboard_provider
+        target: /etc/grafana/provisioning/dashboards/dashboards.yml
+      - source: grafana_dashboard
+        target: /var/lib/grafana/dashboards/ec-av-overview.json
     networks:
       - monitoring
-    deploy:
-      placement:
-        constraints:
-          - node.hostname == docker
 
-  # --- OBS Exporter ---
   obs-exporter:
-    build:
-      context: ./exporters
-      dockerfile: obs-exporter.Dockerfile
+    image: ghcr.io/postman67/ec-av-monitoring/obs-exporter:latest
     ports:
       - "9121:9121"
     environment:
       OBS_HOST: "10.50.0.4"
       OBS_PORT: "4455"
-      OBS_PASSWORD_FILE: "/run/secrets/obs_ws_pass"
+      OBS_PASSWORD: "x0S53niOzxMp7vYu"
       EXPORTER_PORT: "9121"
       POLL_INTERVAL: "10"
-    secrets:
-      - obs_ws_pass
     networks:
       - monitoring
     deploy:
       restart_policy:
         condition: on-failure
         delay: 10s
+      placement:
+        constraints:
+          - node.id == mhvz8xl2bw9ls5iegqfmya6v1
 
-  # --- Shure QLXD Exporter ---
   shure-exporter:
-    build:
-      context: ./exporters
-      dockerfile: shure-exporter.Dockerfile
+    image: ghcr.io/postman67/ec-av-monitoring/shure-exporter:latest
     ports:
       - "9122:9122"
     environment:
@@ -81,12 +71,12 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
+      placement:
+        constraints:
+          - node.id == mhvz8xl2bw9ls5iegqfmya6v1
 
-  # --- Companion Exporter ---
   companion-exporter:
-    build:
-      context: ./exporters
-      dockerfile: companion-exporter.Dockerfile
+    image: ghcr.io/postman67/ec-av-monitoring/companion-exporter:latest
     ports:
       - "9123:9123"
     environment:
@@ -100,6 +90,9 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
+      placement:
+        constraints:
+          - node.id == mhvz8xl2bw9ls5iegqfmya6v1
 
 volumes:
   prometheus_data:
@@ -109,6 +102,16 @@ networks:
   monitoring:
     driver: overlay
 
-secrets:
-  obs_ws_pass:
-    file: ./secrets/obs_ws_pass
+configs:
+  prometheus_config:
+    external: true
+    name: ec_prometheus_config
+  grafana_datasource:
+    external: true
+    name: ec_grafana_datasource
+  grafana_dashboard_provider:
+    external: true
+    name: ec_grafana_dashboards_provider
+  grafana_dashboard:
+    external: true
+    name: ec_grafana_dashboard
